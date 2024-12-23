@@ -10,19 +10,7 @@ export class Version {
   package!: Package;
 
   @Property()
-  major!: number;
-
-  @Property()
-  minor!: number;
-
-  @Property()
-  patch!: number;
-
-  @Property({ unique: true })
-  sortableVersion!: string;
-
-  @Property()
-  versionNumber!: string;
+  version!: string;
 
   @Property({ columnType: 'text' })
   packageBlob!: string;

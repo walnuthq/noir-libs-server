@@ -3,7 +3,8 @@ import {
   Get, 
   Param, 
   StreamableFile, 
-  NotFoundException, Res
+  NotFoundException, Res,
+  BadRequestException
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Package } from '../model/package.entity';
@@ -15,40 +16,39 @@ import { Version } from 'src/model/version.entity';
 @Controller('api/v1/packages')
 export class PackagesController {
   constructor(private readonly em: EntityManager) {}
+  @Get()
+  async getAllPackages() {
+    const packages = await this.em.find(Package, {}, {
+      populate: ['versions']
+    });
 
-  @Get(':name')
-  async getPackageName(@Param('name') name: string, @Param('version') version: string) {
-
-    const pkg = await this.em.findOne(Package, { name }, { populate: ['versions'] });
-    if (!pkg) {
-      throw new NotFoundException(`Package "${name}" not found`);
-    }
-
-    const ver = pkg.versions.getItems();
-
-    if (!ver) {
-      throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
-    }
-
-    return {
+    return packages.map(pkg => ({
       name: pkg.name,
-      versions: ver,
-      readme: pkg.readme,
-      tag_name: pkg.tagName,
-    };
+      tags: pkg.tags,
+      versions: pkg.versions.getItems().map(ver => ({
+        version: ver.version,
+        createdAt: ver.createdAt,
+        sizeKb: ver.sizeKb
+      }))
+    }));
   }
 
   @Get(':name/:version')
   async getPackage(@Param('name') name: string, @Param('version') version: string) {
-    const [major, minor, patch] = version.split('.').map(Number);
+    // const parsedVersion = semver.parse(version);
 
     const pkg = await this.em.findOne(Package, { name }, { populate: ['versions'] });
     if (!pkg) {
       throw new NotFoundException(`Package "${name}" not found`);
     }
 
+    // if (!parsedVersion) {
+    //   throw new BadRequestException('Invalid version format');
+    // }
+  
+    // const { major, minor, patch } = parsedVersion;
     const ver = pkg.versions.getItems().find(
-      v => v.major === major && v.minor === minor && v.patch === patch,
+      v => v.version === version,
     );
 
     if (!ver) {
@@ -57,64 +57,15 @@ export class PackagesController {
 
     return {
       name: pkg.name,
-      version: ver.versionNumber,
+      version: ver.version,
       size_kb: ver.sizeKb,
       readme: pkg.readme,
       created_at: ver.createdAt,
-      tag_name: pkg.tagName,
+      tag_name: pkg.tags,
     };
   }
 
 
-
-  @Get(':name/latest/download')
-  async downloadLatestPackage(
-    @Param('name') name: string,
-    @Res() res: Response,
-  ) {
-    const pkg = await this.em.findOne(Package, { name }, { populate: ['versions'] });
-    if (!pkg) {
-      throw new NotFoundException(`Package "${name}" not found`);
-    }
-  
-    const versions = pkg.versions.getItems();
-    if (versions.length === 0) {
-      throw new NotFoundException(`No versions found for package "${name}"`);
-    }
-  
-    const latestVersion = versions.reduce((latest, current) => {
-      if (!latest) return current;
-      
-      if (current.major > latest.major) return current;
-      if (current.major < latest.major) return latest;
-      
-      if (current.minor > latest.minor) return current;
-      if (current.minor < latest.minor) return latest;
-      
-      if (current.patch > latest.patch) return current;
-      if (current.patch < latest.patch) return latest;
-      
-      return latest;
-    });
-    const download = new Download();
-    download.package = pkg;
-    download.version = latestVersion;
-    await this.em.persistAndFlush(download);
-  
-    const buffer = Buffer.from(latestVersion.packageBlob, 'base64');
-    const fileStream = new stream.PassThrough();
-    fileStream.end(buffer);
-  
-    const fileName = `${name}-${latestVersion.versionNumber}.tar.gz`;
-    res.set({
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${fileName}"`,
-      'Content-Length': buffer.length,
-    });
-  
-    fileStream.pipe(res);
-  }
-  
   @Get(':name/:version/download')
   async downloadPackage(
     @Param('name') name: string,
@@ -129,7 +80,7 @@ export class PackagesController {
     }
   
     const ver = pkg.versions.getItems().find(
-      v => v.major === major && v.minor === minor && v.patch === patch,
+      v => v.version === version,
     );
   
     if (!ver) {
@@ -165,13 +116,10 @@ export class PackagesController {
       throw new NotFoundException(`Package "${name}" not found`);
     }
   
-    const [major, minor, patch] = version.split('.').map(Number);
     
     const ver = await this.em.findOne(Version, { 
-      package: pkg, 
-      major,
-      minor,
-      patch
+      package: {name: name.trim()}, 
+      version
     });
   
     if (!ver) {
@@ -188,9 +136,7 @@ export class PackagesController {
     return {
       package: name,
       version: version,
-      totalDownloads: downloads.length,
       downloads: downloads.map(download => ({
-        id: download.id,
         downloadDate: download.downloadDate
       }))
     };

@@ -11,7 +11,7 @@ export class PackagesService {
     let pkg = await this.em.findOne(Package, { name });
 
     if (!pkg) {
-      pkg = this.em.create(Package, { name, tagName: '', readme: '' });
+      pkg = this.em.create(Package, { name, tags: '', readme: '' });
       await this.em.persistAndFlush(pkg);
     }
 
@@ -24,7 +24,6 @@ export class PackagesService {
       major: number;
       minor: number;
       patch: number;
-      sortableVersion: string;
       versionNumber: string;
       packageBlob: string;
       sizeKb: number;
@@ -34,7 +33,6 @@ export class PackagesService {
 
     const existingVersion = await this.em.findOne(Version, {
       package: pkg,
-      sortableVersion: versionData.sortableVersion,
     });
 
     if (existingVersion) {

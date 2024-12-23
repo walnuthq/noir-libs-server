@@ -5,13 +5,10 @@ import { Download } from './download.entity';
 @Entity()
 export class Package {
   @PrimaryKey()
-  id!: number;
-
-  @Property()
   name!: string;
 
   @Property()
-  tagName!: string;
+  tags!: string;
 
   @Property({ type: 'text' })
   readme?: string;
