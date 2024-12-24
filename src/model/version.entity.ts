@@ -12,8 +12,8 @@ export class Version {
   @PrimaryKey()
   version!: string;
 
-  @Property({ columnType: 'text' })
-  packageBlob!: string;
+  @Property({ type: 'blob' }) // Maps to BLOB in the database
+  data!: Buffer;
 
   @Property()
   sizeKb!: number;
