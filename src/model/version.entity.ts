@@ -3,10 +3,7 @@ import { Package } from './package.entity';
 
 @Entity()
 export class Version {
-  @PrimaryKey()
-  id!: number;
-
-  @ManyToOne(() => Package)
+  @ManyToOne(() => Package, { primary: true })
   package!: Package;
 
   @PrimaryKey()
