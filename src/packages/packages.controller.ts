@@ -4,7 +4,8 @@ import {
   Param, 
   StreamableFile, 
   NotFoundException, Res,
-  BadRequestException
+  BadRequestException,
+  Query
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Package } from '../model/package.entity';
@@ -12,14 +13,17 @@ import { Response } from 'express';
 import * as stream from 'stream';
 import { Download } from 'src/model/download.entity';
 import { Version } from 'src/model/version.entity';
+import * as semver from 'semver';
 
 @Controller('api/v1/packages')
 export class PackagesController {
   constructor(private readonly em: EntityManager) {}
   @Get()
-  async getAllPackages() {
+  async getAllPackages(@Query('limit') limit: string = '10') {
+    const limitNumber = Math.min(parseInt(limit) || 10, 100);
     const packages = await this.em.find(Package, {}, {
-      populate: ['versions']
+      populate: ['versions'],
+      limit: limitNumber
     });
 
     return packages.map(pkg => ({
@@ -35,33 +39,29 @@ export class PackagesController {
 
   @Get(':name/:version')
   async getPackage(@Param('name') name: string, @Param('version') version: string) {
-    // const parsedVersion = semver.parse(version);
-
-    const pkg = await this.em.findOne(Package, { name }, { populate: ['versions'] });
-    if (!pkg) {
-      throw new NotFoundException(`Package "${name}" not found`);
+    if (!semver.valid(version)) {
+      throw new BadRequestException('Invalid version format');
     }
-
-    // if (!parsedVersion) {
-    //   throw new BadRequestException('Invalid version format');
-    // }
   
-    // const { major, minor, patch } = parsedVersion;
-    const ver = pkg.versions.getItems().find(
-      v => v.version === version,
-    );
-
-    if (!ver) {
-      throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
+    const verObj = await this.em.findOne(Version, {
+      package: { name: name.trim() },
+      version: version
+    }, {
+      populate: ['package']
+    });
+  
+    if (!verObj) {
+      throw new NotFoundException(`Version ${version} not found for package "${name}"`);
     }
 
     return {
-      name: pkg.name,
-      version: ver.version,
-      size_kb: ver.sizeKb,
-      readme: pkg.readme,
-      created_at: ver.createdAt,
-      tag_name: pkg.tags,
+      name: verObj.package.name,
+      version: verObj.version,
+      size_kb: verObj.sizeKb,
+      readme: verObj.package.readme,
+      description: verObj.package.description,
+      created_at: verObj.createdAt,
+      tag_name: verObj.package.tags,
     };
   }
 
@@ -72,7 +72,6 @@ export class PackagesController {
     @Param('version') version: string,
     @Res() res: Response,
   ) {
-    const [major, minor, patch] = version.split('.').map(Number);
   
     const pkg = await this.em.findOne(Package, { name }, { populate: ['versions'] });
     if (!pkg) {
@@ -92,15 +91,14 @@ export class PackagesController {
     download.version = ver;
     await this.em.persistAndFlush(download);
   
-    const buffer = Buffer.from(ver.packageBlob, 'base64');
     const fileStream = new stream.PassThrough();
-    fileStream.end(buffer);
+    fileStream.end(ver.data);
   
     const fileName = `${name}-${version}.tar.gz`; 
     res.set({
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${fileName}"`,
-      'Content-Length': buffer.length, 
+      'Content-Length': ver.data.length, 
     });
   
     fileStream.pipe(res);

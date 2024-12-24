@@ -9,7 +9,7 @@ export class Version {
   @ManyToOne(() => Package)
   package!: Package;
 
-  @Property()
+  @PrimaryKey()
   version!: string;
 
   @Property({ columnType: 'text' })

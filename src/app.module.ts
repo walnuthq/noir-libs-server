@@ -5,7 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PackagesModule } from './packages/packages.module';
 import MikroOrmConfig from './mikro-orm.config';
-import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -18,7 +17,7 @@ import { UploadModule } from './upload/upload.module';
       useFactory: async () => MikroOrmConfig,
       inject: [ConfigService],
     }),
-    PackagesModule, UploadModule
+    PackagesModule
   ],
   controllers: [AppController],
   providers: [AppService],

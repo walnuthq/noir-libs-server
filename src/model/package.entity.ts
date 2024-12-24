@@ -13,6 +13,9 @@ export class Package {
   @Property({ type: 'text' })
   readme?: string;
 
+  @Property({ type: 'text' })
+  description?: string;
+
   @OneToMany(() => Version, version => version.package)
   versions = new Collection<Version>(this);
 
