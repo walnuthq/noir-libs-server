@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PackagesModule } from './packages/packages.module';
 import MikroOrmConfig from './mikro-orm.config';
+import { AztecPackagesInitService } from './services/aztec-packages-init.service';
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import MikroOrmConfig from './mikro-orm.config';
     PackagesModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AztecPackagesInitService],
 })
 export class AppModule {}

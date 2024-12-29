@@ -21,7 +21,7 @@ export class PackagesController {
   @Get()
   async getAllPackages(@Query('limit') limit: string = '10') {
     const limitNumber = Math.min(parseInt(limit) || 10, 100);
-    const packages = await this.em.find(Package, {}, {
+    const packages = await this.em.findAll(Package, {
       populate: ['versions'],
       limit: limitNumber
     });
@@ -61,7 +61,7 @@ export class PackagesController {
       readme: verObj.package.readme,
       description: verObj.package.description,
       created_at: verObj.createdAt,
-      tag_name: verObj.package.tags,
+      tags: verObj.package.tags,
     };
   }
 
