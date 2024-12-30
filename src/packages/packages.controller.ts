@@ -139,4 +139,22 @@ export class PackagesController {
       }))
     };
   }
+  @Get('downloads')
+  async getAllDownloads(
+    @Query('sortBy') sortBy: 'asc' | 'desc' = 'desc'
+  ) {
+    const [downloads, total] = await this.em.findAndCount(Download, {}, {
+      populate: ['package', 'version'],
+      orderBy: { downloadDate: sortBy }
+    });
+
+    return {
+      data: downloads.map(download => ({
+        package: download.package.name,
+        version: download.version.version,
+        downloadDate: download.downloadDate
+      })),
+      total
+    };
+  }
 }
