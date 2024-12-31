@@ -11,7 +11,6 @@ export class AztecPackagesInitService implements OnModuleInit {
 
     async onModuleInit() {
         console.log('Running seed logic at app initialization');
-        
 
         const fork = this.em.fork();
         
@@ -35,26 +34,45 @@ export class AztecPackagesInitService implements OnModuleInit {
             package3.description = 'A library for storing arbitrary values';
             package3.readme = '# Aztec Value Note\n\nA library for storing arbitrary values';
 
+            const package4 = new Package();
+            package4.name = 'aztec-protocol-types';
+            package4.tags = 'aztec.nr, aztec, frameworks';
+            package4.description = 'Aztec protocol types internal dependency';
+            package4.readme = '# Aztec protocol types\n\nInternal dependency for Aztec framework packages';
 
             const entity1 = fork.create(Package, package1);
             const entity2 = fork.create(Package, package2);
             const entity3 = fork.create(Package, package3);
-            
+            const entity4 = fork.create(Package, package4);
 
-            await fork.persistAndFlush([entity1, entity2, entity3]);
+            const packages = [entity1, entity2, entity3, entity4];
+            await fork.persistAndFlush(packages);
 
-            const packages = [entity1, entity2, entity3];
-            for (const pkg of packages) {
-                const version = new Version();
-                version.package = pkg;
-                version.version = '0.0.1';
+            const aztecVersion = new Version();
+            aztecVersion.package = entity1;
+            aztecVersion.version = '0.67.0';
 
-                const filePath = path.join(__dirname, '..', '..', 'blobs', `${pkg.name}.tar.gz`);
+            const aztecEasyPrivateStateVersion = new Version();
+            aztecEasyPrivateStateVersion.package = entity2;
+            aztecEasyPrivateStateVersion.version = '0.67.0';
+
+            const aztecValueNoteVersion = new Version();
+            aztecValueNoteVersion.package = entity3;
+            aztecValueNoteVersion.version = '0.67.0';
+
+            const aztecProtocolTypesVersion = new Version();
+            aztecProtocolTypesVersion.package = entity4;
+            aztecProtocolTypesVersion.version = '0.66.0';
+
+            const versions = [aztecVersion, aztecEasyPrivateStateVersion, aztecValueNoteVersion, aztecProtocolTypesVersion];
+
+            for (const version of versions) {
+                const filePath = path.join(__dirname, '..', '..', 'blobs', `${version.package.name}-${version.version}`);
                 const fileData = await fs.promises.readFile(filePath);
                 
                 version.data = fileData;
                 version.sizeKb = Math.ceil(fileData.length / 1024);
-                
+
                 await fork.persist(version);
             }
 
