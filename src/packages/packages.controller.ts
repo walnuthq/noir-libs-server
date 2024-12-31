@@ -78,9 +78,10 @@ export class PackagesController {
       throw new NotFoundException(`Package "${name}" not found`);
     }
   
-    const ver = pkg.versions.getItems().find(
-      v => v.version === version,
-    );
+    const ver = await this.em.findOne(Version, {
+      package: { name },
+      version
+    }, { populate: ['package'] });
   
     if (!ver) {
       throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
@@ -94,7 +95,7 @@ export class PackagesController {
     const fileStream = new stream.PassThrough();
     fileStream.end(ver.data);
   
-    const fileName = `${name}-${version}.tar.gz`; 
+    const fileName = `${name}-${version}`; 
     res.set({
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${fileName}"`,
@@ -115,10 +116,10 @@ export class PackagesController {
     }
   
     
-    const ver = await this.em.findOne(Version, { 
-      package: {name: name.trim()}, 
+    const ver = await this.em.findOne(Version, {
+      package: { name },
       version
-    });
+    }, { populate: ['package'] });
   
     if (!ver) {
       throw new NotFoundException(`Version "${version}" not found for package "${name}"`);

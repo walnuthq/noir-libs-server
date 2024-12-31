@@ -8,7 +8,7 @@ export class Package {
   name!: string;
 
   @Property()
-  tags!: string;
+  tags?: string;
 
   @Property({ type: 'text' })
   readme?: string;
