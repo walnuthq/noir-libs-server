@@ -73,33 +73,31 @@ export class PackagesController {
     @Res() res: Response,
   ) {
   
-    const pkg = await this.em.findOne(Package, { name }, { populate: ['versions'] });
-    if (!pkg) {
-      throw new NotFoundException(`Package "${name}" not found`);
-    }
+    const verObj = await this.em.findOne(Version, {
+      package: { name: name.trim() },
+      version: version
+    }, {
+      populate: ['package']
+    });
+
   
-    const ver = await this.em.findOne(Version, {
-      package: { name },
-      version
-    }, { populate: ['package'] });
-  
-    if (!ver) {
+    if (!verObj) {
       throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
     }
   
     const download = new Download();
-    download.package = pkg;
-    download.version = ver;
+    download.package = verObj.package;
+    download.version = verObj;
     await this.em.persistAndFlush(download);
   
     const fileStream = new stream.PassThrough();
-    fileStream.end(ver.data);
+    fileStream.end(verObj.data);
   
     const fileName = `${name}-${version}`; 
     res.set({
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${fileName}"`,
-      'Content-Length': ver.data.length, 
+      'Content-Length': verObj.data.length, 
     });
   
     fileStream.pipe(res);
@@ -110,24 +108,21 @@ export class PackagesController {
     @Param('name') name: string,
     @Param('version') version: string,
   ) {
-    const pkg = await this.em.findOne(Package, { name });
-    if (!pkg) {
-      throw new NotFoundException(`Package "${name}" not found`);
-    }
+    const verObj = await this.em.findOne(Version, {
+      package: { name: name.trim() },
+      version: version
+    }, {
+      populate: ['package']
+    });
+
   
-    
-    const ver = await this.em.findOne(Version, {
-      package: { name },
-      version
-    }, { populate: ['package'] });
-  
-    if (!ver) {
+    if (!verObj) {
       throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
     }
   
     const downloads = await this.em.find(Download, {
-      package: pkg,
-      version: ver
+      package: verObj.package,
+      version: verObj
     }, {
       orderBy: { downloadDate: 'DESC' }
     });
