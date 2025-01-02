@@ -12,8 +12,6 @@ const config: any = {
     port: Number(process.env.DB_PORT),
     driver: PostgreSqlDriver,
     debug: process.env.IS_PROD !== 'true',
-
-    
 };
 
 export default config;

@@ -1,8 +1,8 @@
-import { 
-  Controller, 
-  Get, 
-  Param, 
-  StreamableFile, 
+import {
+  Controller,
+  Get,
+  Param,
+  StreamableFile,
   NotFoundException, Res,
   BadRequestException,
   Query
@@ -17,7 +17,9 @@ import * as semver from 'semver';
 
 @Controller('api/v1/packages')
 export class PackagesController {
+
   constructor(private readonly em: EntityManager) {}
+
   @Get()
   async getAllPackages(@Query('limit') limit: string = '10') {
     const limitNumber = Math.min(parseInt(limit) || 10, 100);
@@ -42,14 +44,14 @@ export class PackagesController {
     if (!semver.valid(version)) {
       throw new BadRequestException('Invalid version format');
     }
-  
+
     const verObj = await this.em.findOne(Version, {
       package: { name: name.trim() },
       version: version
     }, {
       populate: ['package']
     });
-  
+
     if (!verObj) {
       throw new NotFoundException(`Version ${version} not found for package "${name}"`);
     }
@@ -65,14 +67,8 @@ export class PackagesController {
     };
   }
 
-
   @Get(':name/:version/download')
-  async downloadPackage(
-    @Param('name') name: string,
-    @Param('version') version: string,
-    @Res() res: Response,
-  ) {
-  
+  async downloadPackage(@Param('name') name: string, @Param('version') version: string, @Res() res: Response) {
     const verObj = await this.em.findOne(Version, {
       package: { name: name.trim() },
       version: version
@@ -80,34 +76,30 @@ export class PackagesController {
       populate: ['package']
     });
 
-  
     if (!verObj) {
       throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
     }
-  
+
     const download = new Download();
     download.package = verObj.package;
     download.version = verObj;
     await this.em.persistAndFlush(download);
-  
+
     const fileStream = new stream.PassThrough();
     fileStream.end(verObj.data);
-  
-    const fileName = `${name}-${version}`; 
+
+    const fileName = `${name}-${version}`;
     res.set({
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${fileName}"`,
-      'Content-Length': verObj.data.length, 
+      'Content-Length': verObj.data.length,
     });
-  
+
     fileStream.pipe(res);
   }
-  
+
   @Get(':name/:version/downloads')
-  async getDownloadsHistory(
-    @Param('name') name: string,
-    @Param('version') version: string,
-  ) {
+  async getDownloadsHistory(@Param('name') name: string, @Param('version') version: string) {
     const verObj = await this.em.findOne(Version, {
       package: { name: name.trim() },
       version: version
@@ -115,18 +107,18 @@ export class PackagesController {
       populate: ['package']
     });
 
-  
+
     if (!verObj) {
       throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
     }
-  
+
     const downloads = await this.em.find(Download, {
       package: verObj.package,
       version: verObj
     }, {
       orderBy: { downloadDate: 'DESC' }
     });
-  
+
     return {
       package: name,
       version: version,
@@ -135,10 +127,9 @@ export class PackagesController {
       }))
     };
   }
+
   @Get('downloads')
-  async getAllDownloads(
-    @Query('sortBy') sortBy: 'asc' | 'desc' = 'desc'
-  ) {
+  async getAllDownloads(@Query('sortBy') sortBy: 'asc' | 'desc' = 'desc') {
     const [downloads, total] = await this.em.findAndCount(Download, {}, {
       populate: ['package', 'version'],
       orderBy: { downloadDate: sortBy }

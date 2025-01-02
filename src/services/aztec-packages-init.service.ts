@@ -23,19 +23,19 @@ export class AztecPackagesInitService implements OnModuleInit {
             package1.readme = '# Aztec\n\nThe core of the Aztec framework'; 
 
             const package2 = new Package();
-            package2.name = 'aztec-easy-private-state';
+            package2.name = 'easy-private-state';
             package2.tags = 'aztec.nr, aztec, frameworks';
             package2.description = 'A library for easily creating private state';
             package2.readme = '# Aztec Easy Private State\n\nA library for easily creating private state'; 
 
             const package3 = new Package();
-            package3.name = 'aztec-value-note';
+            package3.name = 'value-note';
             package3.tags = 'aztec.nr, aztec, frameworks';
             package3.description = 'A library for storing arbitrary values';
             package3.readme = '# Aztec Value Note\n\nA library for storing arbitrary values';
 
             const package4 = new Package();
-            package4.name = 'aztec-protocol-types';
+            package4.name = 'protocol-types';
             package4.tags = 'aztec.nr, aztec, frameworks';
             package4.description = 'Aztec protocol types internal dependency';
             package4.readme = '# Aztec protocol types\n\nInternal dependency for Aztec framework packages';
