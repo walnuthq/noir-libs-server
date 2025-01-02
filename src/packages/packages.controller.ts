@@ -100,21 +100,9 @@ export class PackagesController {
 
   @Get(':name/:version/downloads')
   async getDownloadsHistory(@Param('name') name: string, @Param('version') version: string) {
-    const verObj = await this.em.findOne(Version, {
-      package: { name: name.trim() },
-      version: version
-    }, {
-      populate: ['package']
-    });
-
-
-    if (!verObj) {
-      throw new NotFoundException(`Version "${version}" not found for package "${name}"`);
-    }
-
     const downloads = await this.em.find(Download, {
-      package: verObj.package,
-      version: verObj
+      package: { name: name.trim() },
+      version: { version: version.trim() }
     }, {
       orderBy: { downloadDate: 'DESC' }
     });
