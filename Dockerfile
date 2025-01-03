@@ -9,6 +9,7 @@ COPY yarn.lock ./
 RUN yarn install
 
 COPY src ./src
+COPY blobs ./blobs
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
 RUN yarn build
