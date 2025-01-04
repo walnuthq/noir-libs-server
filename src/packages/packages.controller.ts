@@ -39,6 +39,28 @@ export class PackagesController {
     }));
   }
 
+  @Get(':name/latest')
+  async getLatestPackageVersionDetails(@Param('name') name: string) {
+    const packageObj = await this.em.findOne(Package, {
+      name: name.trim(),
+    }, {
+      populate: ['versions']
+    });
+
+    if (!packageObj) {
+      throw new NotFoundException(`Package ${name} not found`);
+    }
+
+    const latestVersion = packageObj.versions.getItems()
+        .map(_ => semver.parse(_.version))
+        .sort((a, b) => semver.rcompare(a.version, b.version))
+        .map(_ => _.version.toString())[0];
+    return {
+      name: packageObj.name,
+      latest_version: latestVersion,
+    };
+  }
+
   @Get(':name/:version')
   async getPackage(@Param('name') name: string, @Param('version') version: string) {
     if (!semver.valid(version)) {
