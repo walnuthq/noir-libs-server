@@ -56,7 +56,6 @@ export class PackagesController {
         .sort((a, b) => semver.rcompare(a.version, b.version))
         .map(_ => _.version.toString())[0];
     return {
-      name: packageObj.name,
       latest_version: latestVersion,
     };
   }
