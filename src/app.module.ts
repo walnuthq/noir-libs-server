@@ -4,6 +4,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { PackagesModule } from './packages/packages.module';
 import MikroOrmConfig from './mikro-orm.config';
 import { AztecPackagesInitService } from './services/aztec-packages-init.service';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -17,6 +18,9 @@ import { AztecPackagesInitService } from './services/aztec-packages-init.service
       inject: [ConfigService],
     }),
     PackagesModule
+  ],
+  controllers: [
+    AppController
   ],
   providers: [AztecPackagesInitService],
 })
