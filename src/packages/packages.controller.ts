@@ -1,10 +1,15 @@
 import {
+  BadRequestException,
   Controller,
   Get,
+  Inject, Logger,
+  NotFoundException,
   Param,
-  NotFoundException, Res,
-  BadRequestException,
-  Query
+  Post,
+  Query,
+  Res,
+  UploadedFile,
+  UseInterceptors
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Package } from '../model/package.entity';
@@ -13,11 +18,15 @@ import * as stream from 'stream';
 import { Download } from 'src/model/download.entity';
 import { Version } from 'src/model/version.entity';
 import * as semver from 'semver';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { PackageService } from './package.service';
 
 @Controller('api/v1/packages')
 export class PackagesController {
+  private readonly logger = new Logger(PackagesController.name, { timestamp: true });
 
-  constructor(private readonly em: EntityManager) {}
+  constructor(private readonly em: EntityManager,
+              @Inject() private readonly packageService: PackageService) {}
 
   @Get()
   async getAllPackages(@Query('limit') limit: string = '10') {
@@ -134,6 +143,19 @@ export class PackagesController {
         downloadDate: download.downloadDate
       }))
     };
+  }
+
+  @Post(':name/:version/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFile(@UploadedFile() file: Express.Multer.File,
+                   @Param('name') name: string,
+                   @Param('version') version: string) {
+    try {
+      await this.packageService.savePackage(name, version, file.buffer, file.mimetype);
+    } catch (e) {
+      this.logger.error(`Failed to upload package ${name}@${version}: ${e}`);
+      throw e;
+    }
   }
 
   @Get('downloads')
