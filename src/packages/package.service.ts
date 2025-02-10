@@ -34,7 +34,13 @@ export class PackageService {
         const manifest = await this.manifestService.tomlToJson(path.join(outputDirectory, 'Nargo.toml'));
         const readme = await this.manifestService.readReadme(path.join(outputDirectory, 'README.md'));
 
-        let versionObj: Version = this.newVersionEntity(version, file);
+        let versionObj: Version = this.newVersionEntity(
+            version,
+            file,
+            readme,
+            manifest.package.description,
+            manifest.package.keywords?.join(', ')
+        );
         let packageObj: Package = await this.packageRepository.findOne({ name }, {populate: ['versions']});
         if (packageObj) {
             const existingVersion = packageObj.versions.find(v => v.version === version);
@@ -47,18 +53,18 @@ export class PackageService {
             packageObj.name = name;
             this.logger.log(`New package ${name} ${version} saved`);
         }
-        packageObj.description = manifest.package.description;
-        packageObj.tags = manifest.package.keywords?.join(', ');
-        packageObj.readme = readme;
         packageObj.versions.add(versionObj);
         await this.packageRepository.getEntityManager().persistAndFlush(packageObj);
     }
 
-    private newVersionEntity(version: string, file: Buffer): Version {
+    private newVersionEntity(version: string, file: Buffer, readme?: string, description?: string, tags?: string): Version {
         const newVersion = new Version();
         newVersion.version = version;
         newVersion.data = file;
         newVersion.sizeKb = file.byteLength / 1024;
+        newVersion.readme = readme;
+        newVersion.description = description;
+        newVersion.tags = tags;
         return newVersion;
     }
 

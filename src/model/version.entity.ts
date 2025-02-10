@@ -17,4 +17,13 @@ export class Version {
 
   @Property()
   createdAt: Date = new Date();
+
+  @Property({ nullable: true })
+  tags?: string;
+
+  @Property({ type: 'text', nullable: true })
+  readme?: string;
+
+  @Property({ type: 'text', nullable: true })
+  description?: string;
 }

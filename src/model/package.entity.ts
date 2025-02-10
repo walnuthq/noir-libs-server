@@ -7,15 +7,6 @@ export class Package {
   @PrimaryKey()
   name!: string;
 
-  @Property({ nullable: true })
-  tags?: string;
-
-  @Property({ type: 'text', nullable: true })
-  readme?: string;
-
-  @Property({ type: 'text', nullable: true })
-  description?: string;
-
   @OneToMany(() => Version, version => version.package)
   versions = new Collection<Version>(this);
 

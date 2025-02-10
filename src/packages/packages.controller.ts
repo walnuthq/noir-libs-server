@@ -20,6 +20,11 @@ import { Version } from 'src/model/version.entity';
 import * as semver from 'semver';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PackageService } from './package.service';
+import { VersionDto } from '../dto/packages/VersionDto';
+import { PackageVersionDto } from '../dto/packages/PackageVersionDto';
+import { PackageDto } from '../dto/packages/PackageDto';
+import { DownloadsCountDto } from '../dto/packages/DownloadsCountDto';
+import { DownloadsDto } from '../dto/packages/DownloadsDto';
 
 @Controller('api/v1/packages')
 export class PackagesController {
@@ -29,41 +34,44 @@ export class PackagesController {
               @Inject() private readonly packageService: PackageService) {}
 
   @Get()
-  async getAllPackages(@Query('limit') limit: string = '10') {
+  async getAllPackages(@Query('limit') limit: string = '10'): Promise<PackageDto[]> {
     const limitNumber = Math.min(parseInt(limit) || 10, 100);
     const packages = await this.em.findAll(Package, {
       populate: ['versions'],
       limit: limitNumber
     });
 
-    return packages.map(pkg => ({
-      name: pkg.name,
-      tags: pkg.tags,
-      description: pkg.description,
-      // Latest version first
-      versions: this.getAndMapVersions(pkg.versions.getItems()),
-    }));
-  }
-
-  @Get(':name/latest')
-  async getLatestPackageVersionDetails(@Param('name') name: string) {
-    const packageObj = await this.em.findOne(Package, {
-      name: name.trim(),
-    }, {
-      populate: ['versions']
+    return packages.map(pkg => {
+      const versions = this.sortVersionsLatestFirst(pkg.versions.getItems());
+      const versionDtos = this.mapToVersionDtos(versions);
+      const packageVersionDto = new PackageVersionDto(
+          versionDtos[0],
+          versions[0].readme,
+          versions[0].description,
+          versions[0].tags
+      );
+      return new PackageDto(pkg.name, versionDtos, packageVersionDto);
     });
-
-    if (!packageObj) {
-      throw new NotFoundException(`Package ${name} not found`);
-    }
-
-    return {
-      latest_version: this.getAndMapVersions(packageObj.versions.getItems())[0],
-    };
   }
+
+  // @Get(':name/latest')
+  // async getLatestPackageVersion(@Param('name') name: string): Promise<PackageVersionDto> {
+  //   const packageObj = await this.em.findOne(Package, {
+  //     name: name.trim(),
+  //   }, {
+  //     populate: ['versions']
+  //   });
+  //
+  //   if (!packageObj) {
+  //     throw new NotFoundException(`Package ${name} not found`);
+  //   }
+  //
+  //   const versions = this.sortVersionsLatestFirst(packageObj.versions.getItems());
+  //   return this.mapToPackageVersionDto(versions[0]);
+  // }
 
   @Get(':name/versions')
-  async getAllPackageVersions(@Param('name') name: string) {
+  async getAllPackageVersions(@Param('name') name: string): Promise<VersionDto[]> {
     const versions = await this.em.find(Version, {
       package: { name: name.trim() },
     }, {
@@ -72,11 +80,11 @@ export class PackagesController {
     if (versions.length === 0) {
       throw new NotFoundException(`Package ${name} not found`);
     }
-    return this.getAndMapVersions(versions);
+    return this.mapToVersionDtos(versions);
   }
 
   @Get(':name/:version')
-  async getPackage(@Param('name') name: string, @Param('version') version: string) {
+  async getPackage(@Param('name') name: string, @Param('version') version: string): Promise<PackageVersionDto> {
     if (!semver.valid(version)) {
       throw new BadRequestException('Invalid version format');
     }
@@ -92,17 +100,7 @@ export class PackagesController {
       throw new NotFoundException(`Version ${version} not found for package "${name}"`);
     }
 
-    return {
-      name: verObj.package.name,
-      version: {
-        version: verObj.version,
-        createdAt: verObj.createdAt,
-        sizeKb: verObj.sizeKb
-      },
-      readme: verObj.package.readme,
-      description: verObj.package.description,
-      tags: verObj.package.tags,
-    };
+    return this.mapToPackageVersionDto(verObj);
   }
 
   @Get(':name/:version/download')
@@ -137,20 +135,18 @@ export class PackagesController {
   }
 
   @Get(':name/downloads/count')
-  async getPackageAllDownloadsHistory(@Param('name') name: string) {
+  async getPackageAllDownloadsHistory(@Param('name') name: string): Promise<DownloadsCountDto> {
     const downloads = await this.em.find(Download, {
       package: { name: name.trim() },
     }, {
       orderBy: { downloadDate: 'DESC' }
     });
 
-    return {
-        count: downloads.length,
-    };
+    return new DownloadsCountDto(downloads.length);
   }
 
   @Get(':name/:version/downloads')
-  async getDownloadsHistory(@Param('name') name: string, @Param('version') version: string) {
+  async getDownloadsHistory(@Param('name') name: string, @Param('version') version: string): Promise<DownloadsDto>{
     const downloads = await this.em.find(Download, {
       package: { name: name.trim() },
       version: { version: version.trim() }
@@ -158,9 +154,7 @@ export class PackagesController {
       orderBy: { downloadDate: 'DESC' }
     });
 
-    return {
-      downloadDates: downloads.map(download => download.downloadDate.toISOString())
-    };
+    return new DownloadsDto(downloads.map(download => download.downloadDate.toISOString()));
   }
 
 
@@ -168,7 +162,7 @@ export class PackagesController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File,
                    @Param('name') name: string,
-                   @Param('version') version: string) {
+                   @Param('version') version: string): Promise<void> {
     try {
       await this.packageService.savePackage(name, version, file.buffer, file.mimetype);
     } catch (e) {
@@ -194,19 +188,24 @@ export class PackagesController {
     };
   }
 
-  private getAndMapVersions(versions: Version[]): {version: string, createdAt: string, sizeKb: number}[] {
-    return versions
-        .map(_ => ({
-          version: _.version,
-          createdAt: _.createdAt,
-          sizeKb: _.sizeKb,
-          parsedVersion:semver.parse(_.version)
-        }))
-        .sort((a, b) => semver.rcompare(a.parsedVersion, b.parsedVersion))
-        .map(ver => ({
-          version: ver.version,
-          createdAt: ver.createdAt.toISOString(),
-          sizeKb: ver.sizeKb
-        }));
-    }
+  private sortVersionsLatestFirst(versions: Version[]): Version[] {
+    return versions.sort((a, b) => semver.rcompare(semver.parse(a.version), semver.parse(b.version)));
+  }
+
+  private mapToVersionDtos(versions: Version[]): VersionDto[] {
+    return versions.map(ver => this.mapToVersionDto(ver));
+  }
+
+  private mapToPackageVersionDto(version: Version): PackageVersionDto {
+    return new PackageVersionDto(
+        this.mapToVersionDto(version),
+        version.readme,
+        version.description,
+        version.tags
+    );
+  }
+
+  private mapToVersionDto(version: Version): VersionDto {
+    return new VersionDto(version.version, version.createdAt.toISOString(), version.sizeKb);
+  }
 }
