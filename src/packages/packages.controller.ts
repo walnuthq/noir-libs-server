@@ -39,11 +39,9 @@ export class PackagesController {
     return packages.map(pkg => ({
       name: pkg.name,
       tags: pkg.tags,
-      versions: pkg.versions.getItems().map(ver => ({
-        version: ver.version,
-        createdAt: ver.createdAt,
-        sizeKb: ver.sizeKb
-      }))
+      description: pkg.description,
+      // Latest version first
+      versions: this.getAndMapVersions(pkg.versions.getItems()),
     }));
   }
 
@@ -59,13 +57,22 @@ export class PackagesController {
       throw new NotFoundException(`Package ${name} not found`);
     }
 
-    const latestVersion = packageObj.versions.getItems()
-        .map(_ => semver.parse(_.version))
-        .sort((a, b) => semver.rcompare(a.version, b.version))
-        .map(_ => _.version.toString())[0];
     return {
-      latest_version: latestVersion,
+      latest_version: this.getAndMapVersions(packageObj.versions.getItems())[0],
     };
+  }
+
+  @Get(':name/versions')
+  async getAllPackageVersions(@Param('name') name: string) {
+    const versions = await this.em.find(Version, {
+      package: { name: name.trim() },
+    }, {
+      populate: ['package']
+    });
+    if (versions.length === 0) {
+      throw new NotFoundException(`Package ${name} not found`);
+    }
+    return this.getAndMapVersions(versions);
   }
 
   @Get(':name/:version')
@@ -87,11 +94,13 @@ export class PackagesController {
 
     return {
       name: verObj.package.name,
-      version: verObj.version,
-      size_kb: verObj.sizeKb,
+      version: {
+        version: verObj.version,
+        createdAt: verObj.createdAt,
+        sizeKb: verObj.sizeKb
+      },
       readme: verObj.package.readme,
       description: verObj.package.description,
-      created_at: verObj.createdAt,
       tags: verObj.package.tags,
     };
   }
@@ -127,6 +136,19 @@ export class PackagesController {
     fileStream.pipe(res);
   }
 
+  @Get(':name/downloads/count')
+  async getPackageAllDownloadsHistory(@Param('name') name: string) {
+    const downloads = await this.em.find(Download, {
+      package: { name: name.trim() },
+    }, {
+      orderBy: { downloadDate: 'DESC' }
+    });
+
+    return {
+        count: downloads.length,
+    };
+  }
+
   @Get(':name/:version/downloads')
   async getDownloadsHistory(@Param('name') name: string, @Param('version') version: string) {
     const downloads = await this.em.find(Download, {
@@ -137,13 +159,10 @@ export class PackagesController {
     });
 
     return {
-      package: name,
-      version: version,
-      downloads: downloads.map(download => ({
-        downloadDate: download.downloadDate
-      }))
+      downloadDates: downloads.map(download => download.downloadDate.toISOString())
     };
   }
+
 
   @Post(':name/:version/upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -174,4 +193,20 @@ export class PackagesController {
       total
     };
   }
+
+  private getAndMapVersions(versions: Version[]): {version: string, createdAt: string, sizeKb: number}[] {
+    return versions
+        .map(_ => ({
+          version: _.version,
+          createdAt: _.createdAt,
+          sizeKb: _.sizeKb,
+          parsedVersion:semver.parse(_.version)
+        }))
+        .sort((a, b) => semver.rcompare(a.parsedVersion, b.parsedVersion))
+        .map(ver => ({
+          version: ver.version,
+          createdAt: ver.createdAt.toISOString(),
+          sizeKb: ver.sizeKb
+        }));
+    }
 }

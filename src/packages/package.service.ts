@@ -1,52 +1,65 @@
-import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
 import { Package } from '../model/package.entity';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { Version } from '../model/version.entity';
 import * as semver from 'semver';
+import { ExtractService } from './extract.service';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { ManifestService } from './manifest.service';
 
 @Injectable()
 export class PackageService {
     private readonly logger = new Logger(PackageService.name, { timestamp: true });
 
     private readonly MAX_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
+    private readonly UPLOAD_BASE_PATH = process.env.REGISTRY_PATH ?? path.join(__dirname, '..', 'temp_blobs');
 
     constructor(@InjectRepository(Package) private packageRepository: EntityRepository<Package>,
-                @InjectRepository(Version) private versionRepository: EntityRepository<Version>) {}
+                @InjectRepository(Version) private versionRepository: EntityRepository<Version>,
+                @Inject() private extractService: ExtractService,
+                @Inject() private manifestService: ManifestService) {}
 
     public async savePackage(name: string, version: string, file: Buffer, fileMimeType: string) {
         this.validateName(name);
         this.validateVersion(version);
         this.validateFile(file, fileMimeType);
-        const existingPackage = await this.packageRepository.findOne({ name }, {populate: ['versions']});
-        if (existingPackage) {
-            const existingVersion = existingPackage.versions.find(v => v.version === version);
+        // Ensure the directory exists
+        const outputDirectory = path.join(this.UPLOAD_BASE_PATH, `${name}_${version}`);
+        if (!fs.existsSync(outputDirectory)) {
+            fs.mkdirSync(outputDirectory, { recursive: true });
+        }
+        await this.extractService.extractTarGzFromBuffer(file, outputDirectory);
+        const manifest = await this.manifestService.tomlToJson(path.join(outputDirectory, 'Nargo.toml'));
+        const readme = await this.manifestService.readReadme(path.join(outputDirectory, 'README.md'));
+
+        let versionObj: Version = this.newVersionEntity(version, file);
+        let packageObj: Package = await this.packageRepository.findOne({ name }, {populate: ['versions']});
+        if (packageObj) {
+            const existingVersion = packageObj.versions.find(v => v.version === version);
             if (existingVersion) {
                 throw new BadRequestException(`Version ${version} already exists for package ${name}`);
             }
-            const newVersion = new Version();
-            newVersion.version = version;
-            newVersion.data = file;
-            newVersion.sizeKb = file.byteLength / 1024;
-            newVersion.package = existingPackage;
-            await this.versionRepository.insert(newVersion);
             this.logger.log(`New version ${version} for package ${name} saved`);
         } else {
-            const newVersion = new Version();
-            newVersion.version = version;
-            newVersion.data = file;
-            newVersion.sizeKb = file.byteLength / 1024;
-
-            const newPackage = new Package();
-            newPackage.name = name;
-            newPackage.description = 'temp description!';
-            newPackage.tags = 'tag1, tag2';
-            newPackage.readme = 'readme';
-            newPackage.versions.add(newVersion);
-
-            await this.packageRepository.getEntityManager().persistAndFlush(newPackage);
+            packageObj = new Package();
+            packageObj.name = name;
             this.logger.log(`New package ${name} ${version} saved`);
         }
+        packageObj.description = manifest.package.description;
+        packageObj.tags = manifest.package.keywords?.join(', ');
+        packageObj.readme = readme;
+        packageObj.versions.add(versionObj);
+        await this.packageRepository.getEntityManager().persistAndFlush(packageObj);
+    }
+
+    private newVersionEntity(version: string, file: Buffer): Version {
+        const newVersion = new Version();
+        newVersion.version = version;
+        newVersion.data = file;
+        newVersion.sizeKb = file.byteLength / 1024;
+        return newVersion;
     }
 
     private validateName(name: string): void {
