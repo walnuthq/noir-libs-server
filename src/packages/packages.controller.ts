@@ -54,21 +54,21 @@ export class PackagesController {
     });
   }
 
-  // @Get(':name/latest')
-  // async getLatestPackageVersion(@Param('name') name: string): Promise<PackageVersionDto> {
-  //   const packageObj = await this.em.findOne(Package, {
-  //     name: name.trim(),
-  //   }, {
-  //     populate: ['versions']
-  //   });
-  //
-  //   if (!packageObj) {
-  //     throw new NotFoundException(`Package ${name} not found`);
-  //   }
-  //
-  //   const versions = this.sortVersionsLatestFirst(packageObj.versions.getItems());
-  //   return this.mapToPackageVersionDto(versions[0]);
-  // }
+  @Get(':name/latest')
+  async getLatestPackageVersion(@Param('name') name: string): Promise<PackageVersionDto> {
+    const packageObj = await this.em.findOne(Package, {
+      name: name.trim(),
+    }, {
+      populate: ['versions']
+    });
+
+    if (!packageObj) {
+      throw new NotFoundException(`Package ${name} not found`);
+    }
+
+    const versions = this.sortVersionsLatestFirst(packageObj.versions.getItems());
+    return this.mapToPackageVersionDto(versions[0]);
+  }
 
   @Get(':name/versions')
   async getAllPackageVersions(@Param('name') name: string): Promise<VersionDto[]> {
@@ -80,7 +80,8 @@ export class PackagesController {
     if (versions.length === 0) {
       throw new NotFoundException(`Package ${name} not found`);
     }
-    return this.mapToVersionDtos(versions);
+    const versionsSorted = this.sortVersionsLatestFirst(versions);
+    return this.mapToVersionDtos(versionsSorted);
   }
 
   @Get(':name/:version')
