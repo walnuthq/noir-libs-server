@@ -1,4 +1,5 @@
-import { VersionDto } from './VersionDto';
+import { Version } from '../../model/version.entity';
+import { VersionDto } from './version.dto';
 
 export class PackageVersionDto {
     version: VersionDto;
@@ -11,5 +12,14 @@ export class PackageVersionDto {
         this.readme = readme;
         this.description = description;
         this.tags = tags;
+    }
+
+    public static fromVersion(version: Version): PackageVersionDto {
+        return new this(
+            VersionDto.fromVersion(version),
+            version.readme,
+            version.description,
+            version.tags
+        );
     }
 }

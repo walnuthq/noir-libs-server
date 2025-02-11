@@ -8,6 +8,7 @@ export class ManifestService {
 
     public async tomlToJson(tomlPath: string): Promise<Manifest> {
         try {
+            console.log('toml path bro', tomlPath);
             const tomlContent = fs.readFileSync(tomlPath, 'utf-8');
             return TOML.parse(tomlContent) as unknown as Manifest;
         } catch (error) {

@@ -1,5 +1,5 @@
-import { VersionDto } from './VersionDto';
-import { PackageVersionDto } from './PackageVersionDto';
+import { VersionDto } from './version.dto';
+import { PackageVersionDto } from './package-version.dto';
 
 export class PackageDto {
     name: string;

@@ -1,3 +1,5 @@
+import { Version } from '../../model/version.entity';
+
 export class VersionDto {
     version: string;
     createdAt: string;
@@ -7,5 +9,13 @@ export class VersionDto {
         this.version = version;
         this.createdAt = createdAt;
         this.sizeKb = sizeKb;
+    }
+
+    public static fromVersion(version: Version): VersionDto {
+        return new this(
+            version.version,
+            version.createdAt.toISOString(),
+            version.sizeKb
+        );
     }
 }
