@@ -1,9 +1,10 @@
-import { Entity, PrimaryKey, Property, Collection, OneToMany } from '@mikro-orm/core';
+import { Collection, Entity, Index, OneToMany, PrimaryKey, Property } from '@mikro-orm/core';
 import { Version } from './version.entity';
 import { Download } from './download.entity';
 
 @Entity()
 export class Package {
+
   @PrimaryKey()
   name!: string;
 
@@ -12,4 +13,8 @@ export class Package {
 
   @OneToMany(() => Download, download => download.package)
   downloads = new Collection<Download>(this);
+
+  @Property()
+  @Index()
+  ownerUserId: string;
 }

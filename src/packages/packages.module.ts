@@ -9,10 +9,12 @@ import { ExtractService } from './extract.service';
 import { ManifestService } from './manifest.service';
 import { PackageController } from './single/package.controller';
 import { PackageVersionController } from './single/package.version.controller';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([Package, Version, Download])
+    MikroOrmModule.forFeature([Package, Version, Download]),
+    UserModule
   ],
   controllers: [AllPackagesController, PackageController, PackageVersionController],
   providers: [PackageService, ExtractService, ManifestService]

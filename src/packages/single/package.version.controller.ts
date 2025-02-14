@@ -21,6 +21,8 @@ import { PackageService } from '../package.service';
 import { PackageVersionDto } from '../../dto/packages/package-version.dto';
 import { DownloadsDto } from '../../dto/packages/downloads.dto';
 import * as semver from 'semver';
+import { AuthenticatedUser } from '../../common/user-session.decorator';
+import { UserSession } from '../../common/user-session';
 
 @Controller('api/v1/packages/:name/:version')
 export class PackageVersionController {
@@ -29,7 +31,7 @@ export class PackageVersionController {
     constructor(private readonly em: EntityManager,
                 @Inject() private readonly packageService: PackageService) {}
 
-    @Get('')
+    @Get()
     async getPackage(@Param('name') name: string, @Param('version') version: string): Promise<PackageVersionDto> {
         if (!semver.valid(version)) {
             throw new BadRequestException('Invalid version format');
@@ -93,13 +95,15 @@ export class PackageVersionController {
     }
 
 
-    @Post('publish')
+    @Post(':apiKey/publish')
     @UseInterceptors(FileInterceptor('file'))
     async uploadFile(@UploadedFile() file: Express.Multer.File,
                      @Param('name') name: string,
-                     @Param('version') version: string): Promise<void> {
+                     @Param('version') version: string,
+                     @Param('apiKey') apiKey: string,
+                     @AuthenticatedUser() authenticatedUser: UserSession): Promise<void> {
         try {
-            await this.packageService.savePackage(name, version, file.buffer, file.mimetype);
+            await this.packageService.savePackage(name, version, file.buffer, file.mimetype, authenticatedUser.userId, apiKey);
         } catch (e) {
             this.logger.error(`Failed to upload package ${ name }@${ version }: ${ e }`);
             throw e;

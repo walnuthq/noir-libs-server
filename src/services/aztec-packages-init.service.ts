@@ -19,15 +19,19 @@ export class AztecPackagesInitService implements OnModuleInit {
             if (existingPackages === 0) {
                 const package1 = new Package();
                 package1.name = 'aztec';
+                package1.ownerUserId = 'aztec-nr';
 
                 const package2 = new Package();
                 package2.name = 'easy_private_state';
+                package2.ownerUserId = 'aztec-nr';
 
                 const package3 = new Package();
                 package3.name = 'value_note';
+                package3.ownerUserId = 'aztec-nr';
 
                 const package4 = new Package();
                 package4.name = 'protocol_types';
+                package4.ownerUserId = 'aztec-nr';
 
                 const entity1 = fork.create(Package, package1);
                 const entity2 = fork.create(Package, package2);

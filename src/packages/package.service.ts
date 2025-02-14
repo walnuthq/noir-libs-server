@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
 import { Package } from '../model/package.entity';
 import { InjectRepository } from '@mikro-orm/nestjs';
@@ -8,6 +8,7 @@ import { ExtractService } from './extract.service';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { ManifestService } from './manifest.service';
+import { ApiKeyService } from '../user/apikey.service';
 
 @Injectable()
 export class PackageService {
@@ -17,11 +18,21 @@ export class PackageService {
     private readonly UPLOAD_BASE_PATH = process.env.REGISTRY_PATH ?? path.join(__dirname, '..', 'temp_blobs');
 
     constructor(@InjectRepository(Package) private packageRepository: EntityRepository<Package>,
-                @InjectRepository(Version) private versionRepository: EntityRepository<Version>,
                 @Inject() private extractService: ExtractService,
-                @Inject() private manifestService: ManifestService) {}
+                @Inject() private manifestService: ManifestService,
+                @Inject() private apiKeyService: ApiKeyService) {}
 
-    public async savePackage(name: string, version: string, file: Buffer, fileMimeType: string) {
+    public async savePackage(
+            name: string,
+            version: string,
+            file: Buffer,
+            fileMimeType: string,
+            userId: string,
+            apiKey: string) {
+        let packageObj: Package = await this.packageRepository.findOne({ name }, {populate: ['versions']});
+        this.validateUserIsOwnerOfGivenPackage(packageObj, userId);
+        await this.apiKeyService.validateApiKey(userId, apiKey);
+        this.validateVersionNotAlreadyExists(packageObj, version);
         this.validateName(name);
         this.validateVersion(version);
         this.validateFile(file, fileMimeType);
@@ -41,14 +52,7 @@ export class PackageService {
             manifest.package.description,
             manifest.package.keywords?.join(', ')
         );
-        let packageObj: Package = await this.packageRepository.findOne({ name }, {populate: ['versions']});
-        if (packageObj) {
-            const existingVersion = packageObj.versions.find(v => v.version === version);
-            if (existingVersion) {
-                throw new BadRequestException(`Version ${version} already exists for package ${name}`);
-            }
-            this.logger.log(`New version ${version} for package ${name} saved`);
-        } else {
+        if (!packageObj) {
             packageObj = new Package();
             packageObj.name = name;
             this.logger.log(`New package ${name} ${version} saved`);
@@ -66,6 +70,22 @@ export class PackageService {
         newVersion.description = description;
         newVersion.tags = tags;
         return newVersion;
+    }
+
+    private validateUserIsOwnerOfGivenPackage(packageObj: Package, userId: string): void {
+        if (packageObj.ownerUserId !== userId) {
+            throw new UnauthorizedException(`You are not the owner of package ${packageObj.name}`);
+        }
+    }
+
+
+    private validateVersionNotAlreadyExists(packageObj: Package, version: string): void {
+        if (packageObj) {
+            const existingVersion = packageObj.versions.find(v => v.version === version);
+            if (existingVersion) {
+                throw new BadRequestException(`Version ${version} already exists for package ${packageObj.name}`);
+            }
+        }
     }
 
     private validateName(name: string): void {
