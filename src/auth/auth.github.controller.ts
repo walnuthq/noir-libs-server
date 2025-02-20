@@ -1,8 +1,20 @@
-import { BadRequestException, Body, Controller, Get, Post, Req, Res, UnauthorizedException } from "@nestjs/common";
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Get,
+    Logger,
+    Post,
+    Req,
+    Res,
+    UnauthorizedException
+} from "@nestjs/common";
+import { AuthenticatedUser } from '../common/user-session.decorator';
+import { UserSession } from '../common/user-session';
 
 @Controller("/api/v1/auth")
 export class AuthGithubController {
-    constructor() {}
+    private readonly logger = new Logger(AuthGithubController.name, { timestamp: true });
 
     @Post("callback")
     async githubAuthCallback(@Body() body, @Req() req: Request) {
@@ -29,7 +41,6 @@ export class AuthGithubController {
         const accessToken = tokenData.access_token;
 
         if (!accessToken) {
-            console.log('problemo1');
             throw new UnauthorizedException("Invalid GitHub authorization code");
         }
 
@@ -49,5 +60,11 @@ export class AuthGithubController {
         const redirectUri = encodeURIComponent(process.env.GITHUB_CALLBACK_URL);
         const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
         res.redirect(githubAuthUrl);
+    }
+
+    @Get("logout")
+    async logout(@Req() req, @AuthenticatedUser() user: UserSession) {
+        this.logger.log(`User ${user.userId} signs out!`);
+        await req.session.destroy();
     }
 }

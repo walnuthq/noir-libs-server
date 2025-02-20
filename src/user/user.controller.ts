@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Logger, Param, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Logger, Param, Post } from '@nestjs/common';
 import { GenerateApiKeyDto } from '../dto/auth/user/apikey/generate-api-key.dto';
 import { AuthenticatedUser } from '../common/user-session.decorator';
 import { UserSession } from '../common/user-session';
@@ -18,7 +18,7 @@ export class UserController {
     }
 
     @Get("profile")
-    async getUserProfile(@AuthenticatedUser() authenticatedUser: UserSession) {
+    async getUserProfile(@AuthenticatedUser() authenticatedUser: UserSession): Promise<{ name: string, avatarUrl: string }> {
         return {
             name: authenticatedUser.name,
             avatarUrl: authenticatedUser.avatarUrl,
@@ -26,7 +26,9 @@ export class UserController {
     }
 
     @Post("apikey")
-    async generateApiKey(@Body() generateApiKeyDto: GenerateApiKeyDto, @AuthenticatedUser() authenticatedUser: UserSession) {
+    async generateApiKey(
+            @Body() generateApiKeyDto: GenerateApiKeyDto,
+            @AuthenticatedUser() authenticatedUser: UserSession): Promise<FullApiKeyDto> {
         const apiKey = new ApiKey(
             uuidv4(),
             uuidv4(),
@@ -51,13 +53,13 @@ export class UserController {
     }
 
     @Delete("apikey/:id")
-    async deleteApiKey(@Param('id') id: string, @AuthenticatedUser() authenticatedUser: UserSession) {
+    async deleteApiKey(@Param('id') id: string, @AuthenticatedUser() authenticatedUser: UserSession): Promise<void> {
         await this.apiKeyRepository.nativeDelete({ id });
         this.logger.log(`API key with ID ${ id } deleted for user ${ authenticatedUser.userId }`);
     }
 
     @Get("apikey")
-    async getApiKeys(@AuthenticatedUser() authenticatedUser: UserSession) {
+    async getApiKeys(@AuthenticatedUser() authenticatedUser: UserSession): Promise<ApiKeyDto[]> {
         const apiKeys = await this.apiKeyRepository.find({ userId: authenticatedUser.userId });
         return apiKeys.map(apiKey => new ApiKeyDto(
             apiKey.id,
@@ -66,11 +68,5 @@ export class UserController {
             apiKey.label,
             apiKey.expiresAt?.toISOString()
         ));
-    }
-
-    @Get("logout")
-    async logout(@Req() req, @Res() res) {
-        req.logout();
-        res.redirect("/");
     }
 }

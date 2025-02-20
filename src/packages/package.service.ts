@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
 import { Package } from '../model/package.entity';
 import { InjectRepository } from '@mikro-orm/nestjs';
@@ -27,12 +27,16 @@ export class PackageService {
             version: string,
             file: Buffer,
             fileMimeType: string,
-            userId: string,
-            apiKey: string) {
-        let packageObj: Package = await this.packageRepository.findOne({ name }, {populate: ['versions']});
-        this.validateUserIsOwnerOfGivenPackage(packageObj, userId);
-        await this.apiKeyService.validateApiKey(userId, apiKey);
-        this.validateVersionNotAlreadyExists(packageObj, version);
+            apiKeyString: string) {
+        let packageObj: Package | undefined = await this.packageRepository.findOne({ name }, {populate: ['versions']});
+        let packageOwnerUserId: string;
+        if (packageObj) {
+            await this.apiKeyService.validateApiKeyOfExistingPackage(apiKeyString, packageObj.ownerUserId, packageObj.name);
+            this.validateVersionNotAlreadyExists(packageObj, version);
+            packageOwnerUserId = packageObj.ownerUserId;
+        } else {
+            packageOwnerUserId = await this.apiKeyService.validateApiKeyAndGetOwnerUserId(apiKeyString);
+        }
         this.validateName(name);
         this.validateVersion(version);
         this.validateFile(file, fileMimeType);
@@ -55,7 +59,8 @@ export class PackageService {
         if (!packageObj) {
             packageObj = new Package();
             packageObj.name = name;
-            this.logger.log(`New package ${name} ${version} saved`);
+            packageObj.ownerUserId = packageOwnerUserId;
+            this.logger.log(`New package ${name} ${version} saved by user with ID ${packageOwnerUserId}`);
         }
         packageObj.versions.add(versionObj);
         await this.packageRepository.getEntityManager().persistAndFlush(packageObj);
@@ -71,13 +76,6 @@ export class PackageService {
         newVersion.tags = tags;
         return newVersion;
     }
-
-    private validateUserIsOwnerOfGivenPackage(packageObj: Package, userId: string): void {
-        if (packageObj.ownerUserId !== userId) {
-            throw new UnauthorizedException(`You are not the owner of package ${packageObj.name}`);
-        }
-    }
-
 
     private validateVersionNotAlreadyExists(packageObj: Package, version: string): void {
         if (packageObj) {

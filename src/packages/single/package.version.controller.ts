@@ -9,7 +9,8 @@ import {
     Post,
     Res,
     UploadedFile,
-    UseInterceptors
+    UseInterceptors,
+    Headers
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Response } from 'express';
@@ -19,10 +20,8 @@ import { Version } from 'src/model/version.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PackageService } from '../package.service';
 import { PackageVersionDto } from '../../dto/packages/package-version.dto';
-import { DownloadsDto } from '../../dto/packages/downloads.dto';
+import { DownloadsDto } from '../../dto/packages/download/downloads.dto';
 import * as semver from 'semver';
-import { AuthenticatedUser } from '../../common/user-session.decorator';
-import { UserSession } from '../../common/user-session';
 
 @Controller('api/v1/packages/:name/:version')
 export class PackageVersionController {
@@ -95,15 +94,15 @@ export class PackageVersionController {
     }
 
 
-    @Post(':apiKey/publish')
+    @Post('/publish')
     @UseInterceptors(FileInterceptor('file'))
-    async uploadFile(@UploadedFile() file: Express.Multer.File,
+    async publishPackage(@UploadedFile() file: Express.Multer.File,
                      @Param('name') name: string,
                      @Param('version') version: string,
-                     @Param('apiKey') apiKey: string,
-                     @AuthenticatedUser() authenticatedUser: UserSession): Promise<void> {
+                     @Headers('Authorization') authorizationHeader: string): Promise<void> {
         try {
-            await this.packageService.savePackage(name, version, file.buffer, file.mimetype, authenticatedUser.userId, apiKey);
+            const apiKey = authorizationHeader?.replace('Bearer ', '').trim();
+            await this.packageService.savePackage(name, version, file.buffer, file.mimetype, apiKey);
         } catch (e) {
             this.logger.error(`Failed to upload package ${ name }@${ version }: ${ e }`);
             throw e;

@@ -1,13 +1,14 @@
-import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, Logger, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 import { UserSession } from './user-session';
 
+const logger = new Logger('user-session-decorator', { timestamp: true });
 export const AuthenticatedUser = createParamDecorator(
     (data: unknown, ctx: ExecutionContext) => {
         const request: any = ctx.switchToHttp().getRequest<Request>();
 
         if (!request.session?.user) {
-            console.log('User not logged in');
+            logger.log('User not logged in');
             throw new UnauthorizedException('User is not logged in.');
         }
 

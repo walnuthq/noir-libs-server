@@ -4,7 +4,7 @@ import { Package } from '../../model/package.entity';
 import { Download } from 'src/model/download.entity';
 import { Version } from 'src/model/version.entity';
 import { VersionDto } from '../../dto/packages/version.dto';
-import { DownloadsCountDto } from '../../dto/packages/downloads-count.dto';
+import { DownloadsCountDto } from '../../dto/packages/download/downloads-count.dto';
 
 @Controller('api/v1/packages/:name')
 export class PackageController {

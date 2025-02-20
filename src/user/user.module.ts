@@ -6,9 +6,7 @@ import { ApiKeyService } from './apikey.service';
 
 @Global()
 @Module({
-    imports: [
-        MikroOrmModule.forFeature([ApiKey])
-    ],
+    imports: [MikroOrmModule.forFeature([ApiKey])],
     providers: [ApiKeyService],
     controllers: [UserController],
     exports: [ApiKeyService]
