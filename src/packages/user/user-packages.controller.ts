@@ -9,7 +9,7 @@ export class UserPackagesController {
 
     constructor(@Inject() private allPackagesService: AllPackagesService) {}
 
-    @Get("")
+    @Get()
     async getAllUserPackages(@AuthenticatedUser() authenticatedUser: UserSession): Promise<PackageDto[]> {
         return this.allPackagesService.getAllUserPackages(authenticatedUser.userId);
     }

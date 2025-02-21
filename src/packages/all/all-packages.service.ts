@@ -12,23 +12,28 @@ import { DownloadsCountDto } from '../../dto/packages/download/downloads-count.d
 @Injectable()
 export class AllPackagesService {
 
-    constructor(@InjectRepository(Package) private packageRepository: EntityRepository<Package>,
-                @InjectRepository(Download) private downloadRepository: EntityRepository<Download>) {
+    constructor(
+        @InjectRepository(Package) private packageRepository: EntityRepository<Package>,
+        @InjectRepository(Download) private downloadRepository: EntityRepository<Download>) {
     }
 
+    // Return all user packages including yanked versions.
     public async getAllUserPackages(userId: string): Promise<PackageDto[]> {
         const packages = await this.packageRepository.find({ ownerUserId: userId }, {
             populate: ['versions'],
         });
-        return packages.map(pkg => this.mapToPackageDto(pkg));
+        return packages.map(pkg => this.filterAndMapToPackageDto(pkg, false));
     }
 
+    // Do not return yanked package versions. If package has all yanked versions - do not return it.
     public async getAllPackages(limitNumber: number): Promise<PackageDto[]> {
         const packages = await this.packageRepository.find({}, {
             populate: ['versions'],
             limit: limitNumber
         });
-        return packages.map(pkg => this.mapToPackageDto(pkg));
+        return packages
+            .map(pkg => this.filterAndMapToPackageDto(pkg, true))
+            .filter(pkg => pkg.versions.length > 0);
     }
 
     public async getAllPackagesDownloadsCount(sortBy: 'asc' | 'desc'): Promise<DownloadsCountDto> {
@@ -38,9 +43,11 @@ export class AllPackagesService {
         return new DownloadsCountDto(Number(total));
     }
 
-    private mapToPackageDto(pkg: Package): PackageDto {
+    private filterAndMapToPackageDto(pkg: Package, filterYanked: boolean): PackageDto {
         const versions = Version.sortVersionsLatestFirst(pkg.versions.getItems());
-        const versionDtos = versions.map(_ => VersionDto.fromVersion(_));
+        const versionDtos = versions
+            .filter(version => filterYanked ? !version.isYanked : true)
+            .map(_ => VersionDto.fromVersion(_));
         const packageVersionDto = new PackageVersionDto(
             versionDtos[0],
             versions[0].readme,

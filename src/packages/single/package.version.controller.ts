@@ -10,7 +10,7 @@ import {
     Res,
     UploadedFile,
     UseInterceptors,
-    Headers
+    Headers, Put
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Response } from 'express';
@@ -54,12 +54,12 @@ export class PackageVersionController {
     async downloadPackage(@Param('name') name: string, @Param('version') version: string, @Res() res: Response) {
         const verObj = await this.em.findOne(Version, {
             package: { name: name.trim() },
-            version: version
+            version: version,
         }, {
             populate: ['package']
         });
 
-        if (!verObj) {
+        if (!verObj || verObj.isYanked) {
             throw new NotFoundException(`Version "${ version }" not found for package "${ name }"`);
         }
 
@@ -103,6 +103,20 @@ export class PackageVersionController {
         try {
             const apiKey = authorizationHeader?.replace('Bearer ', '').trim();
             await this.packageService.savePackage(name, version, file.buffer, file.mimetype, apiKey);
+        } catch (e) {
+            this.logger.error(`Failed to upload package ${ name }@${ version }: ${ e }`);
+            throw e;
+        }
+    }
+
+    @Put('/yank')
+    @UseInterceptors(FileInterceptor('file'))
+    async yankPackage(@Param('name') name: string,
+                      @Param('version') version: string,
+                      @Headers('Authorization') authorizationHeader: string): Promise<void> {
+        try {
+            const apiKey = authorizationHeader?.replace('Bearer ', '').trim();
+            await this.packageService.yankPackage(name, version, apiKey);
         } catch (e) {
             this.logger.error(`Failed to upload package ${ name }@${ version }: ${ e }`);
             throw e;

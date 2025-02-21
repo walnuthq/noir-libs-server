@@ -19,6 +19,9 @@ export class Version {
   @Property()
   createdAt: Date = new Date();
 
+  @Property()
+  isYanked: boolean = false;
+
   @Property({ nullable: true })
   tags?: string;
 

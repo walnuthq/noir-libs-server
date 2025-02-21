@@ -23,7 +23,8 @@ export class PackageController {
             throw new NotFoundException(`Package ${ name } not found`);
         }
 
-        const versions = Version.sortVersionsLatestFirst(packageObj.versions.getItems());
+        const versions = Version.sortVersionsLatestFirst(packageObj.versions.getItems())
+            .filter(version => !version.isYanked);
         return VersionDto.fromVersion(versions[0]);
     }
 
@@ -37,7 +38,8 @@ export class PackageController {
         if (versions.length === 0) {
             throw new NotFoundException(`Package ${ name } not found`);
         }
-        const versionsSorted = Version.sortVersionsLatestFirst(versions);
+        const versionsSorted = Version.sortVersionsLatestFirst(versions)
+            .filter(version => !version.isYanked);
         return versionsSorted.map(_ => VersionDto.fromVersion(_));
     }
 

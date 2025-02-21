@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
 import { Package } from '../model/package.entity';
 import { InjectRepository } from '@mikro-orm/nestjs';
@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { ManifestService } from './manifest.service';
 import { ApiKeyService } from '../user/apikey.service';
+import { NameValidatorService } from './name-validator.service';
 
 @Injectable()
 export class PackageService {
@@ -20,7 +21,9 @@ export class PackageService {
     constructor(@InjectRepository(Package) private packageRepository: EntityRepository<Package>,
                 @Inject() private extractService: ExtractService,
                 @Inject() private manifestService: ManifestService,
-                @Inject() private apiKeyService: ApiKeyService) {}
+                @Inject() private apiKeyService: ApiKeyService,
+                @Inject() private nameValidatorService: NameValidatorService,
+    ) {}
 
     public async savePackage(
             name: string,
@@ -31,13 +34,13 @@ export class PackageService {
         let packageObj: Package | undefined = await this.packageRepository.findOne({ name }, {populate: ['versions']});
         let packageOwnerUserId: string;
         if (packageObj) {
-            await this.apiKeyService.validateApiKeyOfExistingPackage(apiKeyString, packageObj.ownerUserId, packageObj.name);
+            await this.apiKeyService.validatePublishApiKeyOfExistingPackage(apiKeyString, packageObj.ownerUserId, packageObj.name);
             this.validateVersionNotAlreadyExists(packageObj, version);
             packageOwnerUserId = packageObj.ownerUserId;
         } else {
-            packageOwnerUserId = await this.apiKeyService.validateApiKeyAndGetOwnerUserId(apiKeyString);
+            packageOwnerUserId = await this.apiKeyService.validatePublishApiKeyAndGetOwnerUserId(apiKeyString);
         }
-        this.validateName(name);
+        await this.nameValidatorService.validateName(name);
         this.validateVersion(version);
         this.validateFile(file, fileMimeType);
         // Ensure the directory exists
@@ -86,13 +89,6 @@ export class PackageService {
         }
     }
 
-    private validateName(name: string): void {
-        const nameRegexp = /^(?:[a-z0-9]+(?:[-_][a-z0-9]+)*)(?:\.[a-z0-9]+(?:[-_][a-z0-9]+)*)*$/;
-        if (!nameRegexp.test(name)) {
-            throw new BadRequestException('Given package name is not valid. Assure it follows the naming convention.');
-        }
-    }
-
     private validateVersion(version: string): void {
         if (!semver.valid(version)) {
             throw new BadRequestException('Given version is not valid. Assure it is a valid semantic version.');
@@ -109,5 +105,20 @@ export class PackageService {
         if (fileMimeType !== 'application/gzip') {
             throw new BadRequestException('Given file is not a gzip file!');
         }
+    }
+    
+    
+    public async yankPackage(name: string, version: string, apiKeyString: string) : Promise<void> {
+        let packageObj: Package | undefined = await this.packageRepository.findOne({ name }, {populate: ['versions']});
+        if (!packageObj) {
+            throw new UnauthorizedException('Package not exists');
+        }
+        await this.apiKeyService.validateYankApiKeyOfExistingPackage(apiKeyString, packageObj.ownerUserId, packageObj.name);
+        const versionObj = packageObj.versions.find(v => v.version === version);
+        if (!versionObj) {
+            throw new UnauthorizedException(`Given version of package ${name} not exists`);
+        }
+        versionObj.isYanked = true;
+        await this.packageRepository.getEntityManager().flush();
     }
 }
