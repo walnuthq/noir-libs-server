@@ -25,6 +25,9 @@ export class PackageController {
 
         const versions = Version.sortVersionsLatestFirst(packageObj.versions.getItems())
             .filter(version => !version.isYanked);
+        if (versions.length === 0) {
+            throw new NotFoundException(`Package ${ name } not found`);
+        }
         return VersionDto.fromVersion(versions[0]);
     }
 
@@ -45,12 +48,10 @@ export class PackageController {
 
     @Get('downloads/count')
     async getPackageAllDownloadsHistory(@Param('name') name: string): Promise<DownloadsCountDto> {
-        const downloads = await this.em.find(Download, {
+        const downloadsCount = await this.em.count(Download, {
             package: { name: name.trim() },
-        }, {
-            orderBy: { downloadDate: 'DESC' }
         });
 
-        return new DownloadsCountDto(downloads.length);
+        return new DownloadsCountDto(downloadsCount);
     }
 }

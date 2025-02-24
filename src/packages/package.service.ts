@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { ManifestService } from './manifest.service';
 import { ApiKeyService } from '../user/apikey.service';
-import { NameValidatorService } from './name-validator.service';
+import { NameValidatorService } from './name-validator/name-validator.service';
 
 @Injectable()
 export class PackageService {
@@ -31,7 +31,8 @@ export class PackageService {
             file: Buffer,
             fileMimeType: string,
             apiKeyString: string) {
-        let packageObj: Package | undefined = await this.packageRepository.findOne({ name }, {populate: ['versions']});
+        let nameTrimmed = name.trim();
+        let packageObj: Package | undefined = await this.packageRepository.findOne({ name: nameTrimmed }, {populate: ['versions']});
         let packageOwnerUserId: string;
         if (packageObj) {
             await this.apiKeyService.validatePublishApiKeyOfExistingPackage(apiKeyString, packageObj.ownerUserId, packageObj.name);
@@ -40,11 +41,11 @@ export class PackageService {
         } else {
             packageOwnerUserId = await this.apiKeyService.validatePublishApiKeyAndGetOwnerUserId(apiKeyString);
         }
-        await this.nameValidatorService.validateName(name);
+        await this.nameValidatorService.validateName(nameTrimmed);
         this.validateVersion(version);
         this.validateFile(file, fileMimeType);
         // Ensure the directory exists
-        const outputDirectory = path.join(this.UPLOAD_BASE_PATH, `${name}_${version}`);
+        const outputDirectory = path.join(this.UPLOAD_BASE_PATH, `${nameTrimmed}_${version}`);
         if (!fs.existsSync(outputDirectory)) {
             fs.mkdirSync(outputDirectory, { recursive: true });
         }
@@ -61,7 +62,7 @@ export class PackageService {
         );
         if (!packageObj) {
             packageObj = new Package();
-            packageObj.name = name;
+            packageObj.name = nameTrimmed;
             packageObj.ownerUserId = packageOwnerUserId;
             this.logger.log(`New package ${name} ${version} saved by user with ID ${packageOwnerUserId}`);
         }

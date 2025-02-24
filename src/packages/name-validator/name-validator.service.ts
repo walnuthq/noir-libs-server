@@ -13,11 +13,14 @@ export class NameValidatorService {
         if (!name) {
             throw new BadRequestException("Package name cannot be empty");
         }
+        if (/\s/.test(name)) {
+            throw new BadRequestException("Package name cannot contain white spaces");
+        }
         if (name.length > 64) {
             throw new BadRequestException("Package name cannot be longer than 64 characters");
         }
-        if (!/^[a-z0-9][a-z0-9-_]*[a-z0-9]$/.test(name)) {
-            throw new BadRequestException("Package name can only contain alphanumeric characters, dashes and underscores");
+        if (!/^[a-z0-9][a-z0-9_]*[a-z0-9]$/.test(name)) {
+            throw new BadRequestException("Package name can only contain small letter alphanumeric characters and/or underscores");
         }
         if (/--|__/.test(name)) {
             throw new BadRequestException("Package name cannot contain double dashes or underscores");

@@ -36,10 +36,8 @@ export class AllPackagesService {
             .filter(pkg => pkg.versions.length > 0);
     }
 
-    public async getAllPackagesDownloadsCount(sortBy: 'asc' | 'desc'): Promise<DownloadsCountDto> {
-        const [total] = await this.downloadRepository.findAndCount({}, {
-            orderBy: { downloadDate: sortBy }
-        });
+    public async getAllPackagesDownloadsCount(): Promise<DownloadsCountDto> {
+        const total = await this.downloadRepository.count();
         return new DownloadsCountDto(Number(total));
     }
 

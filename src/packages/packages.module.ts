@@ -12,7 +12,7 @@ import { PackageVersionController } from './single/package.version.controller';
 import { UserModule } from '../user/user.module';
 import { AllPackagesService } from './all/all-packages.service';
 import { UserPackagesController } from './user/user-packages.controller';
-import { NameValidatorService } from './name-validator.service';
+import { NameValidatorService } from './name-validator/name-validator.service';
 
 @Module({
   imports: [

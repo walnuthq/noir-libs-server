@@ -14,7 +14,7 @@ export class AllPackagesController {
     }
 
     @Get('downloads/count')
-    async getAllPackagesDownloadsCount(@Query('sortBy') sortBy: 'asc' | 'desc' = 'desc') {
-        return this.allPackagesService.getAllPackagesDownloadsCount(sortBy);
+    async getAllPackagesDownloadsCount() {
+        return this.allPackagesService.getAllPackagesDownloadsCount();
     }
 }
