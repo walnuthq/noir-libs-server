@@ -5,23 +5,26 @@ import { PackagesModule } from './packages/packages.module';
 import MikroOrmConfig from './mikro-orm.config';
 import { AztecPackagesInitService } from './services/aztec-packages-init.service';
 import { AppController } from './app.controller';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
-    MikroOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async () => MikroOrmConfig,
-      inject: [ConfigService],
-    }),
-    PackagesModule
-  ],
-  controllers: [
-    AppController
-  ],
-  providers: [AztecPackagesInitService],
+    imports: [
+        ConfigModule.forRoot({
+            isGlobal: true,
+            envFilePath: '.env',
+        }),
+        MikroOrmModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async () => MikroOrmConfig,
+            inject: [ConfigService],
+        }),
+        PackagesModule,
+        AuthModule
+    ],
+    controllers: [
+        AppController
+    ],
+    providers: [AztecPackagesInitService],
 })
-export class AppModule {}
+export class AppModule {
+}

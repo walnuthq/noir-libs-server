@@ -1,5 +1,6 @@
 import { Entity, PrimaryKey, Property, ManyToOne } from '@mikro-orm/core';
 import { Package } from './package.entity';
+import * as semver from 'semver';
 
 @Entity()
 export class Version {
@@ -17,4 +18,20 @@ export class Version {
 
   @Property()
   createdAt: Date = new Date();
+
+  @Property()
+  isYanked: boolean = false;
+
+  @Property({ nullable: true })
+  tags?: string;
+
+  @Property({ type: 'text', nullable: true })
+  readme?: string;
+
+  @Property({ type: 'text', nullable: true })
+  description?: string;
+
+  public static sortVersionsLatestFirst(versions: Version[]): Version[] {
+    return versions.sort((a, b) => semver.rcompare(semver.parse(a.version), semver.parse(b.version)));
+  }
 }
