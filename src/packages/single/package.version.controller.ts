@@ -9,7 +9,8 @@ import {
     Post,
     Res,
     UploadedFile,
-    UseInterceptors
+    UseInterceptors,
+    Headers, Put
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Response } from 'express';
@@ -19,7 +20,7 @@ import { Version } from 'src/model/version.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PackageService } from '../package.service';
 import { PackageVersionDto } from '../../dto/packages/package-version.dto';
-import { DownloadsDto } from '../../dto/packages/downloads.dto';
+import { DownloadsDto } from '../../dto/packages/download/downloads.dto';
 import * as semver from 'semver';
 
 @Controller('api/v1/packages/:name/:version')
@@ -29,7 +30,7 @@ export class PackageVersionController {
     constructor(private readonly em: EntityManager,
                 @Inject() private readonly packageService: PackageService) {}
 
-    @Get('')
+    @Get()
     async getPackage(@Param('name') name: string, @Param('version') version: string): Promise<PackageVersionDto> {
         if (!semver.valid(version)) {
             throw new BadRequestException('Invalid version format');
@@ -53,12 +54,12 @@ export class PackageVersionController {
     async downloadPackage(@Param('name') name: string, @Param('version') version: string, @Res() res: Response) {
         const verObj = await this.em.findOne(Version, {
             package: { name: name.trim() },
-            version: version
+            version: version,
         }, {
             populate: ['package']
         });
 
-        if (!verObj) {
+        if (!verObj || verObj.isYanked) {
             throw new NotFoundException(`Version "${ version }" not found for package "${ name }"`);
         }
 
@@ -93,13 +94,29 @@ export class PackageVersionController {
     }
 
 
-    @Post('publish')
+    @Post('/publish')
     @UseInterceptors(FileInterceptor('file'))
-    async uploadFile(@UploadedFile() file: Express.Multer.File,
+    async publishPackage(@UploadedFile() file: Express.Multer.File,
                      @Param('name') name: string,
-                     @Param('version') version: string): Promise<void> {
+                     @Param('version') version: string,
+                     @Headers('Authorization') authorizationHeader: string): Promise<void> {
         try {
-            await this.packageService.savePackage(name, version, file.buffer, file.mimetype);
+            const apiKey = authorizationHeader?.replace('Bearer ', '').trim();
+            await this.packageService.savePackage(name, version, file.buffer, file.mimetype, apiKey);
+        } catch (e) {
+            this.logger.error(`Failed to upload package ${ name }@${ version }: ${ e }`);
+            throw e;
+        }
+    }
+
+    @Put('/yank')
+    @UseInterceptors(FileInterceptor('file'))
+    async yankPackage(@Param('name') name: string,
+                      @Param('version') version: string,
+                      @Headers('Authorization') authorizationHeader: string): Promise<void> {
+        try {
+            const apiKey = authorizationHeader?.replace('Bearer ', '').trim();
+            await this.packageService.yankPackage(name, version, apiKey);
         } catch (e) {
             this.logger.error(`Failed to upload package ${ name }@${ version }: ${ e }`);
             throw e;

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/core';
 import { Package } from '../model/package.entity';
 import { Version } from '../model/version.entity';
@@ -8,9 +8,10 @@ import * as fs from 'fs';
 @Injectable()
 export class AztecPackagesInitService implements OnModuleInit {
     constructor(private readonly em: EntityManager) {}
+    private readonly logger = new Logger(AztecPackagesInitService.name, { timestamp: true });
 
     async onModuleInit() {
-        console.log('Running seed logic at app initialization');
+        this.logger.log('Running seed logic at app initialization');
 
         const fork = this.em.fork();
 
@@ -19,15 +20,19 @@ export class AztecPackagesInitService implements OnModuleInit {
             if (existingPackages === 0) {
                 const package1 = new Package();
                 package1.name = 'aztec';
+                package1.ownerUserId = 'aztec-nr';
 
                 const package2 = new Package();
                 package2.name = 'easy_private_state';
+                package2.ownerUserId = 'aztec-nr';
 
                 const package3 = new Package();
                 package3.name = 'value_note';
+                package3.ownerUserId = 'aztec-nr';
 
                 const package4 = new Package();
                 package4.name = 'protocol_types';
+                package4.ownerUserId = 'aztec-nr';
 
                 const entity1 = fork.create(Package, package1);
                 const entity2 = fork.create(Package, package2);
@@ -75,13 +80,13 @@ export class AztecPackagesInitService implements OnModuleInit {
                     version.sizeKb = Math.ceil(fileData.length / 1024);
 
                     await fork.persist(version);
-                    console.log(`Version ${version.version} of package ${version.package.name} inserted`);
+                    this.logger.log(`Version ${version.version} of package ${version.package.name} inserted`);
                 }
 
                 await fork.flush();
-                console.log('Seed data inserted with versions and blobs');
+                this.logger.log('Seed data inserted with versions and blobs');
             } else {
-                console.log('Seed data already exists');
+                this.logger.log('Seed data already exists');
             }
         });
     }

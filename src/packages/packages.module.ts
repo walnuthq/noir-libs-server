@@ -9,12 +9,18 @@ import { ExtractService } from './extract.service';
 import { ManifestService } from './manifest.service';
 import { PackageController } from './single/package.controller';
 import { PackageVersionController } from './single/package.version.controller';
+import { UserModule } from '../user/user.module';
+import { AllPackagesService } from './all/all-packages.service';
+import { UserPackagesController } from './user/user-packages.controller';
+import { NameValidatorService } from './name-validator/name-validator.service';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([Package, Version, Download])
+    MikroOrmModule.forFeature([Package, Version, Download]),
+    UserModule
   ],
-  controllers: [AllPackagesController, PackageController, PackageVersionController],
-  providers: [PackageService, ExtractService, ManifestService]
+  controllers: [AllPackagesController, PackageController, PackageVersionController, UserPackagesController],
+  providers: [PackageService, AllPackagesService, ExtractService, ManifestService, NameValidatorService]
+
 })
 export class PackagesModule {}

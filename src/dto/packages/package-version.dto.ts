@@ -19,7 +19,7 @@ export class PackageVersionDto {
             VersionDto.fromVersion(version),
             version.readme,
             version.description,
-            version.tags
+            version.tags,
         );
     }
 }
