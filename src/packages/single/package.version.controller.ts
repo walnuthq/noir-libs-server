@@ -93,7 +93,6 @@ export class PackageVersionController {
         return new DownloadsDto(downloads.map(download => download.downloadDate.toISOString()));
     }
 
-
     @Post('/publish')
     @UseInterceptors(FileInterceptor('file'))
     async publishPackage(@UploadedFile() file: Express.Multer.File,

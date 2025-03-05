@@ -10,6 +10,7 @@ import * as fs from 'node:fs';
 import { ManifestService } from './manifest.service';
 import { ApiKeyService } from '../user/apikey.service';
 import { NameValidatorService } from './name-validator/name-validator.service';
+import { getGitHubUsername } from '../services/github.service';
 
 @Injectable()
 export class PackageService {
@@ -41,6 +42,8 @@ export class PackageService {
         } else {
             packageOwnerUserId = await this.apiKeyService.validatePublishApiKeyAndGetOwnerUserId(apiKeyString);
         }
+        // user name can be changed by user, here we set it for every new version
+        const ownerUserName = await getGitHubUsername(packageOwnerUserId);
         await this.nameValidatorService.validateName(nameTrimmed);
         this.validateVersion(version);
         this.validateFile(file, fileMimeType);
@@ -56,9 +59,11 @@ export class PackageService {
         let versionObj: Version = this.newVersionEntity(
             version,
             file,
+            ownerUserName,
             readme,
             manifest.package.description,
-            manifest.package.keywords?.join(', ')
+            manifest.package.keywords?.join(', '),
+            manifest.package.repository
         );
         if (!packageObj) {
             packageObj = new Package();
@@ -70,14 +75,18 @@ export class PackageService {
         await this.packageRepository.getEntityManager().persistAndFlush(packageObj);
     }
 
-    private newVersionEntity(version: string, file: Buffer, readme?: string, description?: string, tags?: string): Version {
+    private newVersionEntity(
+            version: string, file: Buffer, ownerUserName: string,
+            readme?: string, description?: string, tags?: string, repository?: string): Version {
         const newVersion = new Version();
         newVersion.version = version;
         newVersion.data = file;
+        newVersion.ownerUserName = ownerUserName;
         newVersion.sizeKb = file.byteLength / 1024;
         newVersion.readme = readme;
         newVersion.description = description;
         newVersion.tags = tags;
+        newVersion.repository = repository;
         return newVersion;
     }
 

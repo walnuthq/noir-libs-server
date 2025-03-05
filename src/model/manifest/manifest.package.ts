@@ -1,6 +1,6 @@
 export class ManifestPackage {
     name?: string;
-    packageType?: 'lib' | 'contract';
+    type?: 'lib' | 'contract';
     compilerVersion?: string;
     authors?: string[];
     version?: string;

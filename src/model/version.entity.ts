@@ -22,6 +22,9 @@ export class Version {
   @Property()
   isYanked: boolean = false;
 
+  @Property({ type: 'text', nullable: false })
+  ownerUserName: string = '';
+
   @Property({ nullable: true })
   tags?: string;
 
@@ -30,6 +33,9 @@ export class Version {
 
   @Property({ type: 'text', nullable: true })
   description?: string;
+
+  @Property({ type: 'text', nullable: true })
+  repository?: string;
 
   public static sortVersionsLatestFirst(versions: Version[]): Version[] {
     return versions.sort((a, b) => semver.rcompare(semver.parse(a.version), semver.parse(b.version)));

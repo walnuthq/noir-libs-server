@@ -48,6 +48,7 @@ export class AztecPackagesInitService implements OnModuleInit {
                 aztecVersion.tags = 'aztec.nr, aztec, frameworks';
                 aztecVersion.description = 'The core of the Aztec framework';
                 aztecVersion.readme = '# Aztec\n\nThe core of the Aztec framework';
+                aztecVersion.repository = 'https://github.com/AztecProtocol/aztec-nr';
 
                 const aztecEasyPrivateStateVersion = new Version();
                 aztecEasyPrivateStateVersion.package = entity2;
@@ -55,6 +56,7 @@ export class AztecPackagesInitService implements OnModuleInit {
                 aztecEasyPrivateStateVersion.tags = 'aztec.nr, aztec, frameworks';
                 aztecEasyPrivateStateVersion.description = 'A library for easily creating private state';
                 aztecEasyPrivateStateVersion.readme = '# Aztec Easy Private State\n\nA library for easily creating private state';
+                aztecEasyPrivateStateVersion.repository = 'https://github.com/AztecProtocol/aztec-nr';
 
                 const aztecValueNoteVersion = new Version();
                 aztecValueNoteVersion.package = entity3;
@@ -62,6 +64,7 @@ export class AztecPackagesInitService implements OnModuleInit {
                 aztecValueNoteVersion.tags = 'aztec.nr, aztec, frameworks';
                 aztecValueNoteVersion.description = 'A library for storing arbitrary values';
                 aztecValueNoteVersion.readme = '# Aztec Value Note\n\nA library for storing arbitrary values';
+                aztecValueNoteVersion.repository = 'https://github.com/AztecProtocol/aztec-nr';
 
                 const aztecProtocolTypesVersion = new Version();
                 aztecProtocolTypesVersion.package = entity4;
@@ -69,6 +72,7 @@ export class AztecPackagesInitService implements OnModuleInit {
                 aztecProtocolTypesVersion.tags = 'aztec.nr, aztec, frameworks';
                 aztecProtocolTypesVersion.description = 'Aztec protocol types internal dependency';
                 aztecProtocolTypesVersion.readme = '# Aztec protocol types\n\nInternal dependency for Aztec framework packages';
+                aztecProtocolTypesVersion.repository = 'https://github.com/AztecProtocol/aztec-nr';
 
                 const versions = [aztecVersion, aztecEasyPrivateStateVersion, aztecValueNoteVersion, aztecProtocolTypesVersion];
 
