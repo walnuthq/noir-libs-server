@@ -48,9 +48,11 @@ export class AllPackagesService {
             .map(_ => VersionDto.fromVersion(_));
         const packageVersionDto = new PackageVersionDto(
             versionDtos[0],
+            versions[0].ownerUserName,
             versions[0].readme,
             versions[0].description,
-            versions[0].tags
+            versions[0].tags,
+            versions[0].repository
         );
         return new PackageDto(pkg.name, versionDtos, packageVersionDto);
     }
