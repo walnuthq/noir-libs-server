@@ -10,7 +10,7 @@ import {
     Res,
     UploadedFile,
     UseInterceptors,
-    Headers, Put
+    Headers, Put, Query
 } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Response } from 'express';
@@ -51,7 +51,8 @@ export class PackageVersionController {
     }
 
     @Get('download')
-    async downloadPackage(@Param('name') name: string, @Param('version') version: string, @Res() res: Response) {
+    async downloadPackage(@Param('name') name: string, @Param('version') version: string, @Res() res: Response,
+                          @Query("fetchYanked") fetchYanked: boolean = false) {
         const verObj = await this.em.findOne(Version, {
             package: { name: name.trim() },
             version: version,
@@ -59,7 +60,7 @@ export class PackageVersionController {
             populate: ['package']
         });
 
-        if (!verObj || verObj.isYanked) {
+        if (!verObj || (verObj.isYanked && !fetchYanked)) {
             throw new NotFoundException(`Version "${ version }" not found for package "${ name }"`);
         }
 
